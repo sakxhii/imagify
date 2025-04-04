@@ -12,17 +12,25 @@ const app = express();
 // 🛡️ Security Headers Middleware
 app.use(helmet());
 
-// 🌐 CORS Configuration - Only allow your frontend origin
+// ✅ CORS Preflight Handling (for OPTIONS requests)
+app.options('*', cors({
+  origin: ["https://imagify-8ole.vercel.app"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+// 🌐 Main CORS Configuration
 app.use(cors({
-  origin: ["https://imagify-8ole.vercel.app"], // ✅ Vercel frontend URL
+  origin: ["https://imagify-8ole.vercel.app"], // ✅ Vercel frontend
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 // 🧠 Body Parsers
-app.use(express.json()); // for JSON bodies
-app.use(express.urlencoded({ extended: true })); // for form-urlencoded bodies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // 🔗 Connect MongoDB and start server
 const startServer = async () => {
@@ -30,7 +38,7 @@ const startServer = async () => {
     await connectDB();
     console.log("✅ Connected to MongoDB");
 
-    // 🔍 Health check route
+    // 🔍 Health check
     app.get('/', (req, res) => {
       res.send("✨ Imagify API is running...");
     });
@@ -39,25 +47,25 @@ const startServer = async () => {
     app.use('/api/user', userRouter);
     app.use('/api/image', imageRouter);
 
-    // ❌ 404 Handler for unmatched routes
+    // ❌ 404 - Not Found
     app.use((req, res) => {
       res.status(404).json({ message: "Route not found" });
     });
 
-    // 💥 Centralized Error Handler (Optional)
+    // 💥 Centralized Error Handler
     app.use((err, req, res, next) => {
-      console.error(err.stack);
+      console.error("❌ Error:", err.stack);
       res.status(500).json({ message: "Internal Server Error" });
     });
 
-    // 🏁 Start listening
+    // 🏁 Start Server
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
 
   } catch (err) {
     console.error("❌ Failed to start server:", err);
-    process.exit(1); // Exit on failure
+    process.exit(1);
   }
 };
 

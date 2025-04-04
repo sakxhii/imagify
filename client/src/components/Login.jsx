@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { assets } from '../assets/assets';
-import { motion } from 'framer-motion'; // ✅ fixed import path
+import { motion } from 'framer-motion';
 import { AppContext } from '../context/AppContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -16,14 +16,19 @@ const Login = () => {
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return; // Prevent multiple submissions
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
-    try {
-      const payload = state === 'Login' ? { email, password } : { name, email, password };
-      const endpoint = state === 'Login' ? '/api/user/login' : '/api/user/register';
+    const endpoint = state === 'Login' ? '/api/user/login' : '/api/user/register';
+    const payload = state === 'Login' ? { email, password } : { name, email, password };
 
-      const { data } = await axios.post(`${backendUrl}${endpoint}`, payload);
+    try {
+      const { data } = await axios.post(
+        `${backendUrl}${endpoint}`,
+        payload,
+        // If you ever switch to cookies:
+        // { withCredentials: true }
+      );
 
       if (data.success) {
         setToken(data.token);
@@ -32,17 +37,16 @@ const Login = () => {
         toast.success(state === 'Login' ? 'Login successful!' : 'Account created successfully!');
         setshowLogin(false);
       } else {
-        toast.error(data.message);
+        toast.error(data.message || 'Authentication failed.');
       }
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Something went wrong. Please try again later.');
       console.error('Auth Error:', error);
+      toast.error(error?.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Prevent body scroll when modal is open
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const closeOnEscape = (e) => {
@@ -56,7 +60,7 @@ const Login = () => {
   }, [setshowLogin]);
 
   return (
-    <div className="fixed top-0 left-0 right-0 bottom-0 z-10 backdrop-blur-sm bg-black/30 flex justify-center items-center">
+    <div className="fixed inset-0 z-10 backdrop-blur-sm bg-black/30 flex justify-center items-center">
       <motion.form
         onSubmit={onSubmitHandler}
         initial={{ opacity: 0.2, y: 50 }}
@@ -65,7 +69,9 @@ const Login = () => {
         className="relative bg-white p-10 rounded-xl text-slate-600 w-[90%] max-w-md shadow-xl"
       >
         <h1 className="text-center text-2xl text-neutral-800 font-semibold">{state}</h1>
-        <p className="text-sm mt-2 text-center">{state === 'Login' ? 'Welcome back!' : 'Let’s create your account'}</p>
+        <p className="text-sm mt-2 text-center">
+          {state === 'Login' ? 'Welcome back!' : 'Let’s create your account'}
+        </p>
 
         {state !== 'Login' && (
           <div className="border px-6 py-2 flex items-center gap-2 rounded-full mt-5">
