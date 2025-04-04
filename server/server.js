@@ -8,14 +8,41 @@ import imageRouter from './routes/imageRoutes.js'
 const PORT = process.env.PORT || 3000
 const app = express()
 
+// 🌐 Allow only your frontend domain to access this API
+app.use(cors({
+  origin: "https://imagify-8ole.vercel.app/", // 🔁 Replace with your actual frontend URL
+  credentials: true
+}))
 
 app.use(express.json())
-app.use(cors())
 
-await connectDB()
+// 🔗 Connect MongoDB and start server
+const startServer = async () => {
+  try {
+    await connectDB()
 
-app.use('/api/user', userRouter)
-app.use('/api/image', imageRouter)
-app.get('/',(req, res)=> res.send("api working"))
+    // ✨ Base route to check if API is working
+    app.get('/', (req, res) => res.send("✨ API is running..."))
 
-app.listen(PORT, ()=> console.log(`server running on port ${PORT}`))
+    // 🔐 Routes
+    app.use('/api/user', userRouter)
+    app.use('/api/image', imageRouter)
+
+    // ❌ Handle unmatched routes
+    app.use((req, res) => {
+      res.status(404).json({ message: "Route not found" });
+    })
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`)
+    })
+
+  } catch (err) {
+    console.error("❌ Failed to start server:", err)
+  }
+}
+
+startServer()
+
+// ✅ Your deployed backend URL (paste in frontend axios/fetch):
+// Example: https://imagify-backend.onrender.com
