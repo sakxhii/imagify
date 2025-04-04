@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { assets } from '../assets/assets';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion'; // ✅ fixed import path
 import { AppContext } from '../context/AppContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -12,55 +12,43 @@ const Login = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Submit handler
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent multiple submissions
+    setIsSubmitting(true);
 
     try {
-      if (state === 'Login') {
-        const { data } = await axios.post(backendUrl + '/api/user/login', { email, password });
+      const payload = state === 'Login' ? { email, password } : { name, email, password };
+      const endpoint = state === 'Login' ? '/api/user/login' : '/api/user/register';
 
-        if (data.success) {
-          setToken(data.token);
-          setUser(data.user);
-          localStorage.setItem('token', data.token);
-          setshowLogin(false);
-          toast.success('Login successful!');
-        } else {
-          toast.error(data.message);
-        }
+      const { data } = await axios.post(`${backendUrl}${endpoint}`, payload);
+
+      if (data.success) {
+        setToken(data.token);
+        setUser(data.user);
+        localStorage.setItem('token', data.token);
+        toast.success(state === 'Login' ? 'Login successful!' : 'Account created successfully!');
+        setshowLogin(false);
       } else {
-        const { data } = await axios.post(backendUrl + '/api/user/register', { name, email, password });
-
-        if (data.success) {
-          setToken(data.token);
-          setUser(data.user);
-          localStorage.setItem('token', data.token);
-          setshowLogin(false);
-          toast.success('Account created successfully!');
-        } else {
-          toast.error(data.message);
-        }
+        toast.error(data.message);
       }
     } catch (error) {
-      toast.error('Something went wrong. Please try again later.');
-      console.error('Login/Register Error:', error.response?.data || error.message || error);
+      toast.error(error?.response?.data?.message || 'Something went wrong. Please try again later.');
+      console.error('Auth Error:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Handling body overflow on modal open
+  // Prevent body scroll when modal is open
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-
     const closeOnEscape = (e) => {
-      if (e.key === 'Escape') {
-        setshowLogin(false);
-      }
+      if (e.key === 'Escape') setshowLogin(false);
     };
-
     window.addEventListener('keydown', closeOnEscape);
-
     return () => {
       document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', closeOnEscape);
@@ -72,22 +60,21 @@ const Login = () => {
       <motion.form
         onSubmit={onSubmitHandler}
         initial={{ opacity: 0.2, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className="relative bg-white p-10 rounded-xl text-slate-500"
+        className="relative bg-white p-10 rounded-xl text-slate-600 w-[90%] max-w-md shadow-xl"
       >
-        <h1 className="text-center text-2xl text-neutral-700 font-medium">{state}</h1>
-        <p className="text-sm mt-2 text-center">Welcome back! Please sign in to continue</p>
+        <h1 className="text-center text-2xl text-neutral-800 font-semibold">{state}</h1>
+        <p className="text-sm mt-2 text-center">{state === 'Login' ? 'Welcome back!' : 'Let’s create your account'}</p>
 
         {state !== 'Login' && (
           <div className="border px-6 py-2 flex items-center gap-2 rounded-full mt-5">
-            <img src={assets.profile_icon} alt="" className="w-6 h-6" />
+            <img src={assets.profile_icon} alt="Profile Icon" className="w-6 h-6" />
             <input
               onChange={(e) => setName(e.target.value)}
               value={name}
               type="text"
-              className="outline-none text-sm"
+              className="outline-none text-sm w-full"
               placeholder="Full Name"
               required
             />
@@ -95,57 +82,61 @@ const Login = () => {
         )}
 
         <div className="border px-6 py-2 flex items-center gap-2 rounded-full mt-4">
-          <img src={assets.email_icon} alt="" className="" />
+          <img src={assets.email_icon} alt="Email Icon" className="w-5 h-5" />
           <input
             onChange={(e) => setEmail(e.target.value)}
             value={email}
             type="email"
-            className="outline-none text-sm"
-            placeholder="Email id"
+            className="outline-none text-sm w-full"
+            placeholder="Email address"
             required
-            pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" // Simple email pattern check
+            pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+            title="Please enter a valid email address"
           />
         </div>
 
         <div className="border px-6 py-2 flex items-center gap-2 rounded-full mt-4">
-          <img src={assets.lock_icon} alt="" className="" />
+          <img src={assets.lock_icon} alt="Lock Icon" className="w-5 h-5" />
           <input
             onChange={(e) => setPassword(e.target.value)}
             value={password}
             type="password"
-            className="outline-none text-sm"
+            className="outline-none text-sm w-full"
             placeholder="Password"
             required
-            // minLength="6" // Minimum password length validation
+            minLength={6}
           />
         </div>
 
-        <p className="text-sm text-blue-600 my-4 cursor-pointer">Forgot Password?</p>
-        <button type="submit" className="bg-blue-600 w-full text-white py-2 rounded-full">
-          {state === 'Login' ? 'Login' : 'Create Account'}
+        <p className="text-sm text-blue-600 my-4 cursor-pointer hover:underline">
+          Forgot Password?
+        </p>
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className={`w-full text-white py-2 rounded-full transition-all ${
+            isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+        >
+          {isSubmitting ? 'Processing...' : state === 'Login' ? 'Login' : 'Create Account'}
         </button>
 
-        {state === 'Login' ? (
-          <p className="mt-5 text-center">
-            Don't have an account?{' '}
-            <span className="text-blue-600 cursor-pointer" onClick={() => setState('Sign Up')}>
-              Sign Up
-            </span>
-          </p>
-        ) : (
-          <p className="mt-5 text-center">
-            Already have an account?{' '}
-            <span className="text-blue-600 cursor-pointer" onClick={() => setState('Login')}>
-              Login
-            </span>
-          </p>
-        )}
+        <p className="mt-5 text-center text-sm">
+          {state === 'Login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+          <span
+            className="text-blue-600 cursor-pointer hover:underline"
+            onClick={() => setState(state === 'Login' ? 'Sign Up' : 'Login')}
+          >
+            {state === 'Login' ? 'Sign Up' : 'Login'}
+          </span>
+        </p>
 
         <img
           onClick={() => setshowLogin(false)}
           src={assets.cross_icon}
-          className="absolute top-5 right-5 cursor-pointer"
-          alt=""
+          className="absolute top-5 right-5 cursor-pointer w-4 h-4"
+          alt="Close"
         />
       </motion.form>
     </div>
