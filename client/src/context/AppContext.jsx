@@ -12,6 +12,8 @@ const AppContextProvider = (props) => {
     const [credit, setCredit] = useState(null); // Initialize with null
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    console.log("✅ Backend URL is:", backendUrl); // ✅ Debugging line
+
     const navigate = useNavigate();
 
     const loadCreditData = async () => {
