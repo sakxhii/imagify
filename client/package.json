@@ -16,7 +16,8 @@
     "motion": "^12.0.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-toastify": "^11.0.3"
+    "react-toastify": "^11.0.3",
+    "vite": "^6.0.5"      // 👈 moved from devDependencies
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -30,13 +31,6 @@
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17",
-    "vite": "^6.0.5"
-  },
-  "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview"
-}
-
+    "tailwindcss": "^3.4.17"
+  }
 }
