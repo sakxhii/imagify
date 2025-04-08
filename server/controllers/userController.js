@@ -120,7 +120,7 @@ const paymentRazorpay = async (req, res) => {
     }
 
     let planData = {
-      Basic: { credits: 200, amount: 99 },
+      Basic: { credits: 200, amount: 9 },
       Advanced: { credits: 750, amount: 299 },
       Business: { credits: 3000, amount: 899 }
     };
