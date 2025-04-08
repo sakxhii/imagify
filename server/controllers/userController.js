@@ -1,9 +1,12 @@
 import userModel from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import razorpay from "razorpay";
+import Razorpay from "razorpay";
 import transactionModel from "../models/transactionModel.js";
 
+// =========================
+// Auth - Register
+// =========================
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -36,6 +39,9 @@ const registerUser = async (req, res) => {
   }
 };
 
+// =========================
+// Auth - Login
+// =========================
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -52,14 +58,6 @@ const loginUser = async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-    // Optional: If you plan to set cookies
-    // res.cookie("token", token, {
-    //   httpOnly: true,
-    //   secure: true,
-    //   sameSite: "None",
-    //   maxAge: 3600000,
-    // });
-
     res.status(200).json({
       success: true,
       message: "Login successful",
@@ -73,6 +71,9 @@ const loginUser = async (req, res) => {
   }
 };
 
+// =========================
+// Get User Credits
+// =========================
 const userCredits = async (req, res) => {
   try {
     const { userId } = req.body;
@@ -94,79 +95,72 @@ const userCredits = async (req, res) => {
   }
 };
 
-const razorpayInstance = new razorpay({
+// =========================
+// Razorpay Setup
+// =========================
+const razorpayInstance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-const paymentRazorpay = async(req, res)=>{
+// =========================
+// Payment Handler
+// =========================
+const paymentRazorpay = async (req, res) => {
   try {
-    const {userId, planId} = req.body;
-
-    const userData = await userModel.findById(userId);
+    const { userId, planId } = req.body;
 
     if (!userId || !planId) {
-      return res.status(400).json({ success: false, message: "Invalid request" }); 
+      return res.status(400).json({ success: false, message: "Invalid request" });
     }
 
-    let credits, plan, amount, date
-    
-    switch (planId) {
-      case 'Basic':
-        plan = 'Basic',
-        credits = 200,
-        amount = 99
-        break;
-
-        case 'Advanced':
-          plan = 'Advanced',
-          credits = 750,
-          amount = 299
-          break;
-
-        case 'Advanced':
-          plan = 'Advanced',
-          credits = 750,
-          amount = 299
-          break;
-        
-        case 'Business':
-          plan = 'Business',
-          credits = 3000,
-          amount = 899
-          break;
-    
-      default:
-        return res.json({success: false, message: 'plan not found'});
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    date = Date.now();
+    let planData = {
+      Basic: { credits: 200, amount: 99 },
+      Advanced: { credits: 750, amount: 299 },
+      Business: { credits: 3000, amount: 899 }
+    };
+
+    if (!planData[planId]) {
+      return res.status(400).json({ success: false, message: "Plan not found!" });
+    }
+
+    const { credits, amount } = planData[planId];
+    const currency = process.env.CURRENCY || "INR";
+    const date = Date.now();
 
     const transactionData = {
-      userId, plan, amount, credits, date
-    }
+      userId,
+      plan: planId,
+      credits,
+      amount,
+      date,
+    };
 
     const newTransaction = await transactionModel.create(transactionData);
 
     const options = {
       amount: amount * 100,
-      currency: process.env.CURRENCY,
-      receipt: newTransaction._id,
-    }
+      currency,
+      receipt: newTransaction._id.toString(),
+    };
 
-    await razorpayInstance.orders.create(options, (error, order)=>{
-      if(error){
-        console.log(error);
-        return res.json({success: false, message: error})
+    razorpayInstance.orders.create(options, (error, order) => {
+      if (error) {
+        console.error("Razorpay Error:", error);
+        return res.status(500).json({ success: false, message: "Order creation failed", error });
       }
-      res.json({success: true, order})
-    })
-
+      res.status(200).json({ success: true, order });
+    });
 
   } catch (error) {
-    console.log(error)
-    res.json({success: false, message: error.message})
+    console.error("Payment Razorpay Error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
-}
+};
 
 export { registerUser, loginUser, userCredits, paymentRazorpay };
