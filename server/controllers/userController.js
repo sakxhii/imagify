@@ -2,6 +2,7 @@ import userModel from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import razorpay from "razorpay";
+import transactionModel from "../models/transactionModel.js";
 
 const registerUser = async (req, res) => {
   try {
@@ -111,17 +112,61 @@ const paymentRazorpay = async(req, res)=>{
     let credits, plan, amount, date
     
     switch (planId) {
-      case value:
-        
+      case 'Basic':
+        plan = 'Basic',
+        credits = 200,
+        amount = 99
         break;
+
+        case 'Advanced':
+          plan = 'Advanced',
+          credits = 750,
+          amount = 299
+          break;
+
+        case 'Advanced':
+          plan = 'Advanced',
+          credits = 750,
+          amount = 299
+          break;
+        
+        case 'Business':
+          plan = 'Business',
+          credits = 3000,
+          amount = 899
+          break;
     
       default:
-        break;
+        return res.json({success: false, message: 'plan not found'});
     }
+
+    date = Date.now();
+
+    const transactionData = {
+      userId, plan, amount, credits, date
+    }
+
+    const newTransaction = await transactionModel.create(transactionData);
+
+    const options = {
+      amount: amount * 100,
+      currency: process.env.CURRENCY,
+      receipt: newTransaction._id,
+    }
+
+    await razorpayInstance.orders.create(options, (error, order)=>{
+      if(error){
+        console.log(error);
+        return res.json({success: false, message: error})
+      }
+      res.json({success: true, order})
+    })
+
+
   } catch (error) {
     console.log(error)
     res.json({success: false, message: error.message})
   }
 }
 
-export { registerUser, loginUser, userCredits };
+export { registerUser, loginUser, userCredits, paymentRazorpay };
