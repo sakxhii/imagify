@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Razorpay from "razorpay";
 import transactionModel from "../models/transactionModel.js";
+import { response } from "express";
 
 // =========================
 // Auth - Register
@@ -120,7 +121,7 @@ const paymentRazorpay = async (req, res) => {
     }
 
     let planData = {
-      Basic: { credits: 200, amount: 9 },
+      Basic: { credits: 200, amount: 0.1 },
       Advanced: { credits: 750, amount: 299 },
       Business: { credits: 3000, amount: 899 }
     };
@@ -163,4 +164,35 @@ const paymentRazorpay = async (req, res) => {
   }
 };
 
-export { registerUser, loginUser, userCredits, paymentRazorpay };
+const verifyrazorpay = async (req, res) => {
+  try {
+    const {razorpay_order_id} = req.body;
+    const orderInfo = await razorpayInstance.orders.fetch(razorpay_order_id);
+
+    if (orderInfo.status == 'paid') {
+      const transactionData = await transactionModel.findById(orderInfo.receipt)
+
+      if (transactionData.payment) {
+        return res.status(200).json({ success: false, message: "Payment failed"})
+        
+      }
+
+      const userData = await userModel.findById(transactionData.userId)
+
+      const creditBalance = userData.creditBalance + transactionData.credits
+      await userModel.findByIdAndUpdate(userData._id, {creditBalance})
+
+      await transactionModel.findByIdAndUpdate(transactionData._id, {payment: true})
+
+      response.json({success: true, message: "Credits Added"})
+      
+    } else{
+      return res.status(200).json({ success: false, message: "Payment failed"})
+    }
+    
+  } catch (error) {
+    console.error("Payment Razorpay Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }}
+
+export { registerUser, loginUser, userCredits, paymentRazorpay, verifyrazorpay };

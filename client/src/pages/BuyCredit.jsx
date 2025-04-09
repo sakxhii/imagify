@@ -1,13 +1,13 @@
 import React, { useContext } from 'react';
 import { assets, plans } from '../assets/assets';
 import { AppContext } from '../context/AppContext';
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 
 const BuyCredit = () => {
-  const { user, backendUrl, token, setShowLogin } = useContext(AppContext);
+  const { user, backendUrl, token, setShowLogin, loadCreditData } = useContext(AppContext);
   const navigate = useNavigate();
 
   const initPay = async (order) => {
@@ -21,6 +21,29 @@ const BuyCredit = () => {
       handler: function (response) {
         console.log('Payment response:', response);
         toast.success("Payment Successful!");
+
+        (async () => {
+          try {
+            const { data } = await axios.post(
+              backendUrl + '/api/user/verify-razor',
+              response,
+              { headers: { token } }
+            );
+
+            if (data.success) {
+              if (typeof loadCreditData === 'function') {
+                loadCreditData();
+              }
+              navigate('/');
+              toast.success("Your credits have been added!");
+            } else {
+              toast.error("Payment verification failed.");
+            }
+          } catch (error) {
+            console.error("Verification error:", error);
+            toast.error(error?.response?.data?.message || "Verification failed.");
+          }
+        })();
       },
       prefill: {
         name: user?.name || 'Imagify User',
@@ -77,9 +100,12 @@ const BuyCredit = () => {
 
       <div className='flex flex-wrap justify-center gap-6 text-left'>
         {plans.map((item, index) => (
-          <div key={index} className='bg-white drop-shadow-sm border rounded-lg py-12 px-8 text-gray-600 
-                                      hover:scale-105 transition-all duration-500'>
-            <img src={assets.logo_icon} alt="" />
+          <div
+            key={index}
+            className='bg-white drop-shadow-sm border rounded-lg py-12 px-8 text-gray-600 
+                       hover:scale-105 transition-all duration-500'
+          >
+            <img src={assets.logo_icon} alt="Plan Icon" />
             <p className='mt-3 mb-1 font-semibold'>{item.id}</p>
             <p className='text-sm'>{item.desc}</p>
             <p className='mt-6'>
