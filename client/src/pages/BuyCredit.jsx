@@ -11,39 +11,40 @@ const BuyCredit = () => {
   const navigate = useNavigate();
 
   const initPay = async (order) => {
+    if (!order?.id) {
+      toast.error("Invalid Razorpay order. Please try again.");
+      console.error("Invalid order object:", order);
+      return;
+    }
+
     const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID, // Should be rzp_test_... for test mode
       amount: order.amount,
       currency: order.currency,
       name: 'Imagify - Credits Payment',
       description: 'Buy AI Credits',
       order_id: order.id,
-      handler: function (response) {
-        console.log('Payment response:', response);
-        toast.success("Payment Successful!");
+      handler: async function (response) {
+        console.log('✅ Razorpay Payment response:', response);
 
-        (async () => {
-          try {
-            const { data } = await axios.post(
-              backendUrl + '/api/user/verify-razor',
-              response,
-              { headers: { token } }
-            );
+        try {
+          const { data } = await axios.post(
+            `${backendUrl}/api/user/verify-razor`,
+            response,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
 
-            if (data.success) {
-              if (typeof loadCreditData === 'function') {
-                loadCreditData();
-              }
-              navigate('/');
-              toast.success("Your credits have been added!");
-            } else {
-              toast.error("Payment verification failed.");
-            }
-          } catch (error) {
-            console.error("Verification error:", error);
-            toast.error(error?.response?.data?.message || "Verification failed.");
+          if (data.success) {
+            loadCreditData?.();
+            toast.success("Payment verified & credits added!");
+            navigate('/');
+          } else {
+            toast.error("Payment verification failed.");
           }
-        })();
+        } catch (error) {
+          console.error("❌ Verification error:", error);
+          toast.error(error?.response?.data?.message || "Verification failed.");
+        }
       },
       prefill: {
         name: user?.name || 'Imagify User',
@@ -59,12 +60,12 @@ const BuyCredit = () => {
   };
 
   const paymentRazorpay = async (planId) => {
-    try {
-      if (!user) {
-        setShowLogin(true);
-        return;
-      }
+    if (!user) {
+      setShowLogin(true);
+      return;
+    }
 
+    try {
       const { data } = await axios.post(
         `${backendUrl}/api/user/pay-razor`,
         { planId },
@@ -75,14 +76,17 @@ const BuyCredit = () => {
         }
       );
 
-      if (data.success) {
+      console.log("✅ Razorpay Order Data:", data);
+
+      if (data.success && data.order?.id) {
         initPay(data.order);
       } else {
         toast.error("Failed to initiate payment.");
+        console.error("Order missing or failed:", data);
       }
 
     } catch (error) {
-      console.error("Payment Error:", error);
+      console.error("❌ Payment Error:", error);
       toast.error(error?.response?.data?.message || "Something went wrong.");
     }
   };
