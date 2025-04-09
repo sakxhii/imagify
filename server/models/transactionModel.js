@@ -2,14 +2,14 @@ import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema({
   userId: {
-    type: mongoose.Schema.Types.ObjectId, // better than plain String for referencing
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
   plan: {
     type: String,
     required: true,
-    enum: ['Basic', 'Advanced', 'Business'] // optional: validates plan types
+    enum: ['Basic', 'Advanced', 'Business']
   },
   amount: {
     type: Number,
@@ -23,9 +23,13 @@ const transactionSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  paymentId: {
+    type: String, // stores Razorpay payment ID (optional but useful)
+    default: null
+  },
   date: {
     type: Date,
-    default: Date.now // this gives you an actual Date object
+    default: Date.now
   }
 });
 
